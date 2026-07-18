@@ -1,0 +1,51 @@
+name: imaritime
+
+# All backing services the app depends on -- Redis (Celery broker),
+# Qdrant (vector search), PostgreSQL (primary datastore) -- in one
+# place with persistent named volumes, so `docker compose down`
+# doesn't lose data and starting fresh is one command
+# (`docker compose up -d`, or just `uv run python init.py`, which
+# does this for you and waits for each service to be reachable).
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: imaritime-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--save", "60", "1"]
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: imaritime-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: imaritime-postgres
+    environment:
+      POSTGRES_USER: imaritime
+      POSTGRES_PASSWORD: imaritime
+      POSTGRES_DB: imaritime
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U imaritime -d imaritime"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  redis_data:
+  qdrant_data:
+  postgres_data:
