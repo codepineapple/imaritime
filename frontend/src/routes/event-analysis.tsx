@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 
 import { ApiError } from '@/api/client'
 import { useCreateEventAnalysisJob, useEventAnalysisJobs, useRetryEventAnalysisJob } from '@/api/queries'
-import type { BarrierCitation, EventAnalysisJobOut } from '@/api/types'
+import type { BarrierCitation, EventAnalysisJobOut, MatchedReportRef } from '@/api/types'
 import { RUNNING_JOB_STATUSES } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -101,6 +101,28 @@ function CreateEventAnalysisForm() {
   )
 }
 
+const MATCH_TYPE_LABELS: Record<MatchedReportRef['match_type'], string> = {
+  exact: 'Exact match',
+  semantic: 'Similar case',
+  both: 'Exact + similar',
+}
+
+function SourceReportsList({ reports }: { reports: MatchedReportRef[] }) {
+  if (reports.length === 0) {
+    return <p className="text-muted-foreground text-xs">No source reports.</p>
+  }
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {reports.map((r) => (
+        <Badge key={r.report_id} variant={r.match_type === 'exact' ? 'secondary' : 'outline'} className="gap-1">
+          #{r.report_id}
+          <span className="text-muted-foreground font-normal">{MATCH_TYPE_LABELS[r.match_type]}</span>
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
 function AnalysisDocument({ job }: { job: EventAnalysisJobOut }) {
   if (!job.findings || !job.severity_stage) return null
   const { barrier_finding, recommended_action } = job.findings
@@ -159,10 +181,13 @@ function AnalysisDocument({ job }: { job: EventAnalysisJobOut }) {
         </section>
       </div>
 
-      <div className="bg-muted/40 text-muted-foreground px-6 py-2.5 text-[0.7rem]">
-        Based on {job.near_miss_report_ids.length + job.serious_report_ids.length + job.fatal_report_ids.length}{' '}
-        historical report(s): #
-        {[...job.near_miss_report_ids, ...job.serious_report_ids, ...job.fatal_report_ids].join(', #')}
+      <div className="border-t px-6 py-5">
+        <p className="text-muted-foreground mb-2 text-[0.7rem] font-semibold tracking-wide uppercase">
+          Source Reports
+        </p>
+        <SourceReportsList
+          reports={[...job.near_miss_reports, ...job.serious_reports, ...job.fatal_reports]}
+        />
       </div>
     </Card>
   )

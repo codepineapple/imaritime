@@ -7,7 +7,6 @@ is exactly one place that knows where the PostgreSQL database lives, where
 Qdrant stores its data, what the Redis URL is, how the DSPy extraction
 pipeline is configured, and so on.
 """
-
 from __future__ import annotations
 
 from functools import lru_cache
@@ -132,6 +131,11 @@ class Settings(BaseSettings):
     #: -- a slow/unreachable embedding provider (e.g. blocked model
     #: download) must never stall the whole report list.
     SEMANTIC_SEARCH_TIMEOUT_SECONDS: float = 3.0
+    #: How many semantically-similar reports Step B pulls in for event
+    #: analysis, on top of whatever matches operation_type/vessel_type
+    #: exactly. Reuses SEMANTIC_SIMILARITY_THRESHOLD as its relevance
+    #: cutoff rather than a second, separate threshold.
+    EVENT_ANALYSIS_SEMANTIC_TOP_N: int = 10
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_VECTOR_SIZE: int = 1536
     OPENAI_API_KEY: str | None = None

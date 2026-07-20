@@ -51,18 +51,28 @@ async def classify_event(
     )
 
 
-async def map_trajectory(session: AsyncSession, operation_type: str, vessel_type: str) -> TrajectoryBuckets:
+async def map_trajectory(
+    session: AsyncSession, operation_type: str, vessel_type: str, description: str
+) -> TrajectoryBuckets:
     """Step B: finds every matching report, bucketed by severity outcome.
+
+    Matches on two sources: an exact operation_type/vessel_type match,
+    and a semantic similarity match against the raw description -- see
+    `app.event_analysis.trajectory.get_trajectory_buckets`.
 
     Args:
         session: Active async DB session.
-        operation_type: The classified operation type to match.
-        vessel_type: The classified vessel type to match.
+        operation_type: The classified operation type to match exactly.
+        vessel_type: The classified vessel type to match exactly.
+        description: The user's raw event description, used for the
+            semantic match (not Step A's cleaned-up summary -- the
+            rawest, most direct signal of intent).
 
     Returns:
-        The matching reports, sorted into near_miss/serious/fatal buckets.
+        The matching reports, sorted into near_miss/serious/fatal
+        buckets, each tagged with how it matched.
     """
-    return await get_trajectory_buckets(session, operation_type, vessel_type)
+    return await get_trajectory_buckets(session, operation_type, vessel_type, description)
 
 
 def find_barrier(

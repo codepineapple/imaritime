@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function MultiSelectPopover({
   label,
@@ -37,22 +36,27 @@ export function MultiSelectPopover({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
-        <ScrollArea className="max-h-64">
-          <div className="p-2">
-            {options.length === 0 && (
-              <p className="text-muted-foreground px-2 py-3 text-center text-xs">No values yet</p>
-            )}
-            {options.map((option) => (
-              <label
-                key={option}
-                className="hover:bg-accent/10 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm"
-              >
-                <Checkbox checked={selected.includes(option)} onCheckedChange={() => toggle(option)} />
-                <span className="truncate">{option}</span>
-              </label>
-            ))}
-          </div>
-        </ScrollArea>
+        {/* A plain max-height + overflow-y-auto div, not ScrollArea: Radix's
+            ScrollArea Viewport sizes itself with height:100%, which only
+            resolves against an ancestor with a *definite* height -- a
+            max-height alone doesn't count, so the viewport was rendering at
+            its full natural content height instead of clipping/scrolling,
+            and a long option list (e.g. every distinct causal_signature
+            value) would balloon the whole popover open uncapped. */}
+        <div className="max-h-64 overflow-y-auto p-2">
+          {options.length === 0 && (
+            <p className="text-muted-foreground px-2 py-3 text-center text-xs">No values yet</p>
+          )}
+          {options.map((option) => (
+            <label
+              key={option}
+              className="hover:bg-accent/10 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm"
+            >
+              <Checkbox checked={selected.includes(option)} onCheckedChange={() => toggle(option)} />
+              <span className="truncate">{option}</span>
+            </label>
+          ))}
+        </div>
       </PopoverContent>
     </Popover>
   )

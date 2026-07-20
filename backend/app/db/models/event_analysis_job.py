@@ -59,9 +59,12 @@ class EventAnalysisJob(Base):
         near_miss_count: Matching reports classified as near-miss (Step B).
         serious_count: Matching reports classified as serious (Step B).
         fatal_count: Matching reports classified as fatal (Step B).
-        near_miss_report_ids: Report ids in the near-miss bucket.
-        serious_report_ids: Report ids in the serious bucket.
-        fatal_report_ids: Report ids in the fatal bucket.
+        near_miss_report_ids: `{"report_id": int, "match_type": str}` entries
+            in the near-miss bucket -- `match_type` is "exact" (operation_type/
+            vessel_type match), "semantic" (similarity match against the
+            description only), or "both".
+        serious_report_ids: Same shape as `near_miss_report_ids`, for the serious bucket.
+        fatal_report_ids: Same shape as `near_miss_report_ids`, for the fatal bucket.
         analysis_payload: The barrier finding + recommended action
             (Steps D/E), dumped to JSON, once completed.
         created_at: Timestamp this job was created.
@@ -87,9 +90,9 @@ class EventAnalysisJob(Base):
     near_miss_count: Mapped[Optional[int]] = mapped_column(Integer)
     serious_count: Mapped[Optional[int]] = mapped_column(Integer)
     fatal_count: Mapped[Optional[int]] = mapped_column(Integer)
-    near_miss_report_ids: Mapped[Optional[list[int]]] = mapped_column(JSONB)
-    serious_report_ids: Mapped[Optional[list[int]]] = mapped_column(JSONB)
-    fatal_report_ids: Mapped[Optional[list[int]]] = mapped_column(JSONB)
+    near_miss_report_ids: Mapped[Optional[list[dict]]] = mapped_column(JSONB)
+    serious_report_ids: Mapped[Optional[list[dict]]] = mapped_column(JSONB)
+    fatal_report_ids: Mapped[Optional[list[dict]]] = mapped_column(JSONB)
 
     analysis_payload: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB)
 

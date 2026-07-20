@@ -10,7 +10,6 @@ reimported report should be just as searchable as one that went through
 live extraction. For raw source documents (PDF/TXT/MD) that still need
 Docling + DSPy extraction, see `app.tasks.ingestion_tasks` instead.
 """
-
 from __future__ import annotations
 
 import asyncio
@@ -98,9 +97,7 @@ def _iter_json_records(raw_bytes: bytes, filename: str) -> list[dict]:
     return records
 
 
-async def ingest_jsonl(
-    session: AsyncSession, raw_bytes: bytes, filename: str
-) -> JsonlIngestResult:
+async def ingest_jsonl(session: AsyncSession, raw_bytes: bytes, filename: str) -> JsonlIngestResult:
     """Ingests a JSON/JSON-array/JSONL file of pre-extracted records.
 
     Each record must be shaped `{"extracted_data": {<MaritimeIncident
@@ -139,9 +136,7 @@ async def ingest_jsonl(
             )
         except ValidationError as exc:
             result.failed += 1
-            result.errors.append(
-                f"Record {idx}: {exc.errors()[0].get('msg', str(exc))}"
-            )
+            result.errors.append(f"Record {idx}: {exc.errors()[0].get('msg', str(exc))}")
             continue
         except Exception as exc:  # noqa: BLE001
             result.failed += 1
@@ -154,9 +149,7 @@ async def ingest_jsonl(
         seen_hashes.add(built.report.content_hash)
         candidates.append(built)
 
-    existing = await crud.get_existing_hashes(
-        session, [b.report.content_hash for b in candidates]
-    )
+    existing = await crud.get_existing_hashes(session, [b.report.content_hash for b in candidates])
     to_insert = [b for b in candidates if b.report.content_hash not in existing]
     result.duplicates += len(candidates) - len(to_insert)
 
@@ -169,6 +162,28 @@ async def ingest_jsonl(
         result.embedded = await _embed_new_reports([b.report for b in to_insert])
 
     return result
+
+
+async def _embed_batch_with_fresh_provider(texts: list[str]) -> list[list[float]]:
+    """Constructs the embedding provider (if not already cached) and embeds a batch.
+
+    Combined into one awaitable specifically so the caller's
+    `asyncio.wait_for` actually bounds both steps -- constructing the
+    provider is the genuinely slow part on first use (it may download a
+    model), and a bare synchronous call blocks the event loop directly,
+    which `wait_for` can't interrupt; only an awaited threadpool call
+    gives it something to actually cancel. Wrapping just `embed_batch`
+    (and not this) was a real gap: the very first embedding attempt in
+    a process would run unbounded regardless of the configured timeout.
+
+    Args:
+        texts: The texts to embed.
+
+    Returns:
+        One embedding vector per input text, in the same order.
+    """
+    provider = await run_in_threadpool(get_embedding_provider)
+    return await run_in_threadpool(provider.embed_batch, texts)
 
 
 async def _embed_new_reports(reports: list[Any]) -> int:
@@ -191,7 +206,6 @@ async def _embed_new_reports(reports: list[Any]) -> int:
         How many reports were successfully embedded and indexed.
     """
     try:
-        provider = await run_in_threadpool(get_embedding_provider)
         texts = [
             build_embedding_text(
                 {
@@ -211,9 +225,8 @@ async def _embed_new_reports(reports: list[Any]) -> int:
             for r in reports
         ]
         vectors = await asyncio.wait_for(
-            run_in_threadpool(provider.embed_batch, texts),
-            timeout=settings.SEMANTIC_SEARCH_TIMEOUT_SECONDS
-            * 3,  # a batch, not a single query
+            _embed_batch_with_fresh_provider(texts),
+            timeout=settings.SEMANTIC_SEARCH_TIMEOUT_SECONDS * 3,  # a batch, not a single query
         )
     except Exception:  # noqa: BLE001
         return 0

@@ -92,7 +92,9 @@ async def _run_event_analysis_pipeline(job_id: int, celery_task_id: str) -> dict
     # --- Step B: map trajectory ---
     await _update_job(job_id, status="mapping_trajectory", stage="mapping_trajectory")
     async with AsyncSessionLocal() as session:
-        buckets = await map_trajectory(session, classification.operation_type, classification.vessel_type)
+        buckets = await map_trajectory(
+            session, classification.operation_type, classification.vessel_type, description
+        )
 
     if buckets.near_miss_count + buckets.serious_count + buckets.fatal_count == 0:
         raise PermanentEventAnalysisError(
@@ -105,9 +107,9 @@ async def _run_event_analysis_pipeline(job_id: int, celery_task_id: str) -> dict
         near_miss_count=buckets.near_miss_count,
         serious_count=buckets.serious_count,
         fatal_count=buckets.fatal_count,
-        near_miss_report_ids=[r.id for r in buckets.near_miss],
-        serious_report_ids=[r.id for r in buckets.serious],
-        fatal_report_ids=[r.id for r in buckets.fatal],
+        near_miss_report_ids=[{"report_id": m.report.id, "match_type": m.match_type} for m in buckets.near_miss],
+        serious_report_ids=[{"report_id": m.report.id, "match_type": m.match_type} for m in buckets.serious],
+        fatal_report_ids=[{"report_id": m.report.id, "match_type": m.match_type} for m in buckets.fatal],
     )
 
     # --- Steps D+E: find the barrier condition and recommend one action ---

@@ -4,37 +4,51 @@ Deliberately scoped to just the causal-narrative fields (contributing
 factors, root causes, immediate causes) -- the fields that could
 plausibly contain "the condition present in fatal cases but absent from
 near-misses" -- rather than every extracted field, keeping the LLM
-context focused on what the comparison actually needs.
+context focused on what the comparison actually needs. Each report is
+also tagged with how it matched the described event (exact operation/
+vessel match, semantic similarity, or both), so the model comparing
+groups knows which reports are a precise operational match versus
+"similar in spirit" -- that distinction matters when judging how
+confidently a barrier condition generalizes.
 """
 from __future__ import annotations
 
-from app.db.models import Report
+from app.event_analysis.trajectory import MatchedReport
 
 CONTEXT_FIELDS = ["contributing_factors", "root_causes", "immediate_causes"]
 
+_MATCH_TYPE_LABELS = {
+    "exact": "exact operation/vessel match",
+    "semantic": "semantically similar, not an exact operation/vessel match",
+    "both": "exact operation/vessel match and semantically similar",
+}
 
-def build_group_context(reports: list[Report]) -> str:
+
+def build_group_context(matched_reports: list[MatchedReport]) -> str:
     """Builds formatted context text for one severity bucket's reports.
 
     Args:
-        reports: The bucket's reports (e.g. `TrajectoryBuckets.fatal`).
+        matched_reports: The bucket's matched reports (e.g.
+            `TrajectoryBuckets.fatal`), each tagged with how it matched.
 
     Returns:
         A formatted text block, one section per report, with source
-        page numbers inlined next to each field where known -- or a
-        placeholder string if the bucket is empty.
+        page numbers and match type inlined -- or a placeholder string
+        if the bucket is empty.
     """
-    if not reports:
+    if not matched_reports:
         return "(no matching reports in this group)"
 
     chunks = []
-    for report in reports:
+    for matched in matched_reports:
+        report = matched.report
         pages_by_field = {
             fm.field_name: fm.source_page_numbers
             for fm in report.field_metadata
             if fm.source_page_numbers
         }
-        lines = [f"Report #{report.id}"]
+        match_label = _MATCH_TYPE_LABELS.get(matched.match_type, matched.match_type)
+        lines = [f"Report #{report.id} [{match_label}]"]
         for field_name in CONTEXT_FIELDS:
             value = getattr(report, field_name, None)
             if not value:

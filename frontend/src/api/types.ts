@@ -268,6 +268,16 @@ export interface CreateEventAnalysisJobRequest {
   description: string
 }
 
+//: How a report ended up in a severity bucket's comparison set: an
+//: exact operation_type/vessel_type match, a semantic similarity match
+//: against the raw description, or both.
+export type EventMatchType = 'exact' | 'semantic' | 'both'
+
+export interface MatchedReportRef {
+  report_id: number
+  match_type: EventMatchType
+}
+
 export interface EventAnalysisJobOut {
   id: number
   description: string
@@ -283,9 +293,9 @@ export interface EventAnalysisJobOut {
   near_miss_count: number | null
   serious_count: number | null
   fatal_count: number | null
-  near_miss_report_ids: number[]
-  serious_report_ids: number[]
-  fatal_report_ids: number[]
+  near_miss_reports: MatchedReportRef[]
+  serious_reports: MatchedReportRef[]
+  fatal_reports: MatchedReportRef[]
 
   findings: EventAnalysisFindings | null
 
