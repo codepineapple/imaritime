@@ -3,6 +3,8 @@ import type {
   BulkDeleteResult,
   CausalGroup,
   CreateBriefJobRequest,
+  CreateEventAnalysisJobRequest,
+  EventAnalysisJobOut,
   FrontendConfig,
   GroupByRequest,
   IngestionJobOut,
@@ -143,5 +145,13 @@ export const api = {
     list: () => get<IngestionJobOut[]>('/jobs'),
     get: (id: number) => get<IngestionJobOut>(`/jobs/${id}`),
     retry: (id: number) => post<IngestionJobOut>(`/jobs/${id}/retry`, {}),
+  },
+
+  eventAnalysis: {
+    create: (params: CreateEventAnalysisJobRequest) =>
+      post<EventAnalysisJobOut>('/event-analysis', params),
+    list: () => get<EventAnalysisJobOut[]>('/event-analysis'),
+    get: (id: number) => get<EventAnalysisJobOut>(`/event-analysis/${id}`),
+    retry: (id: number) => post<EventAnalysisJobOut>(`/event-analysis/${id}/retry`, {}),
   },
 }

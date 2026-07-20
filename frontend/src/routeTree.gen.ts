@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BriefsRouteImport } from './routes/briefs'
+import { Route as EventAnalysisRouteImport } from './routes/event-analysis'
 import { Route as IncidentsRouteImport } from './routes/incidents'
 import { Route as PatternsRouteImport } from './routes/patterns'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const BriefsRoute = BriefsRouteImport.update({
   id: '/briefs',
   path: '/briefs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventAnalysisRoute = EventAnalysisRouteImport.update({
+  id: '/event-analysis',
+  path: '/event-analysis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IncidentsRoute = IncidentsRouteImport.update({
@@ -38,12 +44,14 @@ const PatternsRoute = PatternsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/briefs': typeof BriefsRoute
+  '/event-analysis': typeof EventAnalysisRoute
   '/incidents': typeof IncidentsRoute
   '/patterns': typeof PatternsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/briefs': typeof BriefsRoute
+  '/event-analysis': typeof EventAnalysisRoute
   '/incidents': typeof IncidentsRoute
   '/patterns': typeof PatternsRoute
 }
@@ -51,20 +59,28 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/briefs': typeof BriefsRoute
+  '/event-analysis': typeof EventAnalysisRoute
   '/incidents': typeof IncidentsRoute
   '/patterns': typeof PatternsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/briefs' | '/incidents' | '/patterns'
+  fullPaths: '/' | '/briefs' | '/event-analysis' | '/incidents' | '/patterns'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/briefs' | '/incidents' | '/patterns'
-  id: '__root__' | '/' | '/briefs' | '/incidents' | '/patterns'
+  to: '/' | '/briefs' | '/event-analysis' | '/incidents' | '/patterns'
+  id:
+    | '__root__'
+    | '/'
+    | '/briefs'
+    | '/event-analysis'
+    | '/incidents'
+    | '/patterns'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BriefsRoute: typeof BriefsRoute
+  EventAnalysisRoute: typeof EventAnalysisRoute
   IncidentsRoute: typeof IncidentsRoute
   PatternsRoute: typeof PatternsRoute
 }
@@ -83,6 +99,13 @@ declare module '@tanstack/react-router' {
       path: '/briefs'
       fullPath: '/briefs'
       preLoaderRoute: typeof BriefsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/event-analysis': {
+      id: '/event-analysis'
+      path: '/event-analysis'
+      fullPath: '/event-analysis'
+      preLoaderRoute: typeof EventAnalysisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/incidents': {
@@ -105,6 +128,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BriefsRoute: BriefsRoute,
+  EventAnalysisRoute: EventAnalysisRoute,
   IncidentsRoute: IncidentsRoute,
   PatternsRoute: PatternsRoute,
 }

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tansta
 import { api } from '@/api/client'
 import type {
   CreateBriefJobRequest,
+  CreateEventAnalysisJobRequest,
   GroupByRequest,
   ReportFilterParams,
   ReportIdsRequest,
@@ -205,6 +206,39 @@ export function useRetryBriefJob() {
     mutationFn: (jobId: number) => api.briefs.retry(jobId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['briefs'] })
+    },
+  })
+}
+
+/** Polls the full event-analysis jobs list -- powers the Event Analysis page's Running/Completed tabs. */
+export function useEventAnalysisJobs() {
+  return useQuery({
+    queryKey: ['event-analysis', 'list'],
+    queryFn: () => api.eventAnalysis.list(),
+    refetchInterval: (query) => {
+      const jobs = query.state.data ?? []
+      const anyRunning = jobs.some((j) => RUNNING_JOB_STATUSES.includes(j.status))
+      return anyRunning ? 2000 : 8000
+    },
+  })
+}
+
+export function useCreateEventAnalysisJob() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (params: CreateEventAnalysisJobRequest) => api.eventAnalysis.create(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['event-analysis'] })
+    },
+  })
+}
+
+export function useRetryEventAnalysisJob() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (jobId: number) => api.eventAnalysis.retry(jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['event-analysis'] })
     },
   })
 }

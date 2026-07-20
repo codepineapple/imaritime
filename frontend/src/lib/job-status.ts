@@ -8,6 +8,9 @@ const STAGE_LABELS: Record<string, string> = {
   embedding: 'Generating embedding',
   analyzing: 'Analyzing selected reports',
   generating: 'Generating brief (LLM)',
+  classifying: 'Classifying event (LLM)',
+  mapping_trajectory: 'Mapping trajectory against historical reports',
+  finding_barrier: 'Finding the barrier condition (LLM)',
   completed: 'Completed',
   failed: 'Failed',
 }

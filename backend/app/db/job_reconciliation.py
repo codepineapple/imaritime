@@ -1,6 +1,6 @@
 """Stale-job reconciliation.
 
-`IngestionJob` and `BriefJob` both progress through a pending -> ... ->
+`IngestionJob`, `BriefJob`, and `EventAnalysisJob` all progress through a pending -> ... ->
 completed/failed lifecycle driven by a Celery task. Normally, if a
 worker dies mid-task, `task_acks_late` + `task_reject_on_worker_lost`
 (see `app.tasks.celery_app`) plus a tightened Redis `visibility_timeout`
@@ -31,7 +31,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.db.models import BriefJob, IngestionJob
+from app.db.models import BriefJob, IngestionJob, EventAnalysisJob
 
 settings = get_settings()
 
@@ -45,13 +45,13 @@ _STALLED_MESSAGE = (
 
 
 async def reconcile_stale_jobs(
-    session: AsyncSession, model: Union[type[IngestionJob], type[BriefJob]]
+    session: AsyncSession, model: Union[type[IngestionJob], type[BriefJob], type[EventAnalysisJob]]
 ) -> None:
     """Marks any job stuck without progress for too long as failed.
 
     Args:
         session: Active async DB session (caller commits/rolls back).
-        model: `IngestionJob` or `BriefJob` -- both share the
+        model: `IngestionJob` or `BriefJob` or `EventAnalysisJob` -- all share the
             `status`/`stage`/`error_message`/`updated_at` columns this
             operates on.
     """

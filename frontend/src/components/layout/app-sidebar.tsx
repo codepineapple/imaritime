@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Anchor, LayoutList, Radar, ScrollText } from 'lucide-react'
+import { Anchor, LayoutList, Radar, ScrollText, TrendingUp } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: '/incidents', label: 'Incidents', icon: LayoutList },
   { to: '/patterns', label: 'Causal Patterns', icon: Radar },
   { to: '/briefs', label: 'Intelligence Briefs', icon: ScrollText },
+  { to: '/event-analysis', label: 'Event Analysis', icon: TrendingUp },
 ] as const
 
 export function AppSidebar() {

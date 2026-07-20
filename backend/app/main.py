@@ -28,6 +28,7 @@ from app.api.routers import (
     reports,
     uploads,
     vocab,
+    event_analysis,
 )
 from app.core.config import get_settings
 from app.vectorstore.embeddings import get_embedding_provider
@@ -120,7 +121,7 @@ def create_app() -> FastAPI:
     app.include_router(uploads.router, prefix=prefix)
     app.include_router(jobs.router, prefix=prefix)
     app.include_router(vocab.router, prefix=prefix)
-
+    app.include_router(event_analysis.router, prefix=prefix)
     return app
 
 

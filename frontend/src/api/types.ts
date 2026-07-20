@@ -152,7 +152,7 @@ export interface IntelligenceBrief {
   action_lines: ActionLine[]
 }
 
-//: Shared job lifecycle status across both ingestion and brief jobs.
+//: Shared job lifecycle status across ingestion, brief, and event-analysis jobs.
 export type JobStatus =
   | 'pending'
   | 'parsing'
@@ -161,6 +161,9 @@ export type JobStatus =
   | 'embedding'
   | 'analyzing'
   | 'generating'
+  | 'classifying'
+  | 'mapping_trajectory'
+  | 'finding_barrier'
   | 'completed'
   | 'failed'
 
@@ -172,6 +175,9 @@ export const RUNNING_JOB_STATUSES: JobStatus[] = [
   'embedding',
   'analyzing',
   'generating',
+  'classifying',
+  'mapping_trajectory',
+  'finding_barrier',
 ]
 
 export interface CreateBriefJobRequest {
@@ -230,4 +236,59 @@ export interface ReportIdsRequest {
 export interface BulkDeleteResult {
   deleted: number[]
   not_found: number[]
+}
+
+//: The three severity buckets a report -- or a freshly-described event
+//: -- is classified into. See app/db/models/event_analysis_job.py for
+//: why there are three, not the four a clinical severity scale might use.
+export type SeverityStage = 'near_miss' | 'serious' | 'fatal'
+
+export interface BarrierCitation {
+  report_id: number
+  field_name: string
+  page_numbers: number[]
+}
+
+export interface BarrierFinding {
+  condition: string
+  citations: BarrierCitation[]
+}
+
+export interface RecommendedAction {
+  action: string
+  citations: BarrierCitation[]
+}
+
+export interface EventAnalysisFindings {
+  barrier_finding: BarrierFinding
+  recommended_action: RecommendedAction
+}
+
+export interface CreateEventAnalysisJobRequest {
+  description: string
+}
+
+export interface EventAnalysisJobOut {
+  id: number
+  description: string
+  status: JobStatus
+  stage: string | null
+  error_message: string | null
+
+  operation_type: string | null
+  vessel_type: string | null
+  event_summary: string | null
+  severity_stage: SeverityStage | null
+
+  near_miss_count: number | null
+  serious_count: number | null
+  fatal_count: number | null
+  near_miss_report_ids: number[]
+  serious_report_ids: number[]
+  fatal_report_ids: number[]
+
+  findings: EventAnalysisFindings | null
+
+  created_at: string
+  updated_at: string
 }
