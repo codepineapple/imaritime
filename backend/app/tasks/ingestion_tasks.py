@@ -24,7 +24,6 @@ A parsed document's text is cached on the job row after stage 1
 succeeds, so a retry triggered by a later stage's transient error
 doesn't have to re-run Docling.
 """
-
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -64,9 +63,7 @@ async def _update_job(job_id: int, **fields: Any) -> None:
         **fields: Column name/value pairs to set.
     """
     async with AsyncSessionLocal() as session:
-        await session.execute(
-            update(IngestionJob).where(IngestionJob.id == job_id).values(**fields)
-        )
+        await session.execute(update(IngestionJob).where(IngestionJob.id == job_id).values(**fields))
         await session.commit()
 
 
@@ -105,9 +102,7 @@ async def _run_pipeline(job_id: int, celery_task_id: str) -> dict:
     if job is None:
         raise PermanentIngestionError(f"IngestionJob {job_id} not found")
 
-    await _update_job(
-        job_id, status="parsing", stage="parsing", celery_task_id=celery_task_id
-    )
+    await _update_job(job_id, status="parsing", stage="parsing", celery_task_id=celery_task_id)
 
     # --- Stage 1: parse (skip if a prior attempt already cached this) ---
     parsed_text = job.parsed_text
@@ -117,9 +112,7 @@ async def _run_pipeline(job_id: int, celery_task_id: str) -> dict:
         except ParsingError as exc:
             raise PermanentIngestionError(f"Parsing failed: {exc}") from exc
         except Exception as exc:  # noqa: BLE001
-            raise TransientIngestionError(
-                f"Parsing raised an unexpected error: {exc}"
-            ) from exc
+            raise TransientIngestionError(f"Parsing raised an unexpected error: {exc}") from exc
 
         if not parsed_text or not parsed_text.strip():
             raise PermanentIngestionError("Parsed document text is empty.")
@@ -156,9 +149,7 @@ async def _run_pipeline(job_id: int, celery_task_id: str) -> dict:
             # retried task that got further than it looked). Not an
             # error -- point the job at the existing report.
             result = await session.execute(
-                select(Report.id).where(
-                    Report.content_hash == built.report.content_hash
-                )
+                select(Report.id).where(Report.content_hash == built.report.content_hash)
             )
             report_id = result.scalar_one()
         else:
@@ -178,13 +169,7 @@ async def _run_pipeline(job_id: int, celery_task_id: str) -> dict:
         # manual re-embed job picks it up.
         logger.warning("Embedding step failed for report %s: %s", report_id, exc)
 
-    await _update_job(
-        job_id,
-        status="completed",
-        stage="completed",
-        report_id=report_id,
-        error_message=None,
-    )
+    await _update_job(job_id, status="completed", stage="completed", report_id=report_id, error_message=None)
     return {"report_id": report_id, "job_id": job_id}
 
 
@@ -262,29 +247,36 @@ def process_document(self: Task, job_id: int) -> dict:
     try:
         return run_async(_run_pipeline(job_id, self.request.id))
     except PermanentIngestionError as exc:
-        run_async(
-            _update_job(job_id, status="failed", stage="failed", error_message=str(exc))
-        )
+        run_async(_update_job(job_id, status="failed", stage="failed", error_message=str(exc)))
         raise
     except TransientIngestionError as exc:
         # Record *why* it's retrying so a polling client can show
         # something more useful than "still processing".
         attempt = self.request.retries + 1
-        run_async(
-            _update_job(
-                job_id,
-                error_message=f"Attempt {attempt}/{self.max_retries + 1} failed: {exc}",
+        is_final_attempt = self.request.retries >= self.max_retries
+        if is_final_attempt:
+            # autoretry_for wraps this whole function -- once retries are
+            # exhausted, re-raising here just becomes an unhandled Celery
+            # task failure with no code path left to run afterward. Mark
+            # it failed now, on this last attempt, rather than leaving the
+            # job stuck showing its last in-progress stage until the
+            # (much slower) stale-job sweep eventually catches it.
+            run_async(
+                _update_job(
+                    job_id,
+                    status="failed",
+                    stage="failed",
+                    error_message=f"Failed after {attempt} attempt(s): {exc}",
+                )
             )
-        )
+        else:
+            run_async(
+                _update_job(job_id, error_message=f"Attempt {attempt}/{self.max_retries + 1} failed: {exc}")
+            )
         raise
     except Exception as exc:  # noqa: BLE001 - last-resort safeguard
         run_async(
-            _update_job(
-                job_id,
-                status="failed",
-                stage="failed",
-                error_message=f"Unexpected error: {exc}",
-            )
+            _update_job(job_id, status="failed", stage="failed", error_message=f"Unexpected error: {exc}")
         )
         raise
 

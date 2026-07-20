@@ -7,7 +7,6 @@ polled by the frontend via `GET /api/v1/briefs/{id}`; transient LLM
 errors are retried with backoff, permanent errors (bad/missing report
 selection) fail immediately.
 """
-
 from __future__ import annotations
 
 from typing import Any
@@ -43,9 +42,7 @@ async def _update_job(job_id: int, **fields: Any) -> None:
         **fields: Column name/value pairs to set.
     """
     async with AsyncSessionLocal() as session:
-        await session.execute(
-            update(BriefJob).where(BriefJob.id == job_id).values(**fields)
-        )
+        await session.execute(update(BriefJob).where(BriefJob.id == job_id).values(**fields))
         await session.commit()
 
 
@@ -70,9 +67,7 @@ async def _run_brief_pipeline(job_id: int, celery_task_id: str) -> dict:
             raise PermanentBriefError(f"BriefJob {job_id} not found")
         report_ids = list(job.report_ids)
 
-    await _update_job(
-        job_id, status="analyzing", stage="analyzing", celery_task_id=celery_task_id
-    )
+    await _update_job(job_id, status="analyzing", stage="analyzing", celery_task_id=celery_task_id)
 
     async with AsyncSessionLocal() as session:
         try:
@@ -125,26 +120,33 @@ def generate_brief(self: Task, job_id: int) -> dict:
     try:
         return run_async(_run_brief_pipeline(job_id, self.request.id))
     except PermanentBriefError as exc:
-        run_async(
-            _update_job(job_id, status="failed", stage="failed", error_message=str(exc))
-        )
+        run_async(_update_job(job_id, status="failed", stage="failed", error_message=str(exc)))
         raise
     except TransientBriefError as exc:
         attempt = self.request.retries + 1
-        run_async(
-            _update_job(
-                job_id,
-                error_message=f"Attempt {attempt}/{self.max_retries + 1} failed: {exc}",
+        is_final_attempt = self.request.retries >= self.max_retries
+        if is_final_attempt:
+            # autoretry_for wraps this whole function -- once retries are
+            # exhausted, re-raising here just becomes an unhandled Celery
+            # task failure with no code path left to run afterward. Mark
+            # it failed now, on this last attempt, rather than leaving the
+            # job stuck showing its last in-progress stage until the
+            # (much slower) stale-job sweep eventually catches it.
+            run_async(
+                _update_job(
+                    job_id,
+                    status="failed",
+                    stage="failed",
+                    error_message=f"Failed after {attempt} attempt(s): {exc}",
+                )
             )
-        )
+        else:
+            run_async(
+                _update_job(job_id, error_message=f"Attempt {attempt}/{self.max_retries + 1} failed: {exc}")
+            )
         raise
     except Exception as exc:  # noqa: BLE001 - last-resort safeguard
         run_async(
-            _update_job(
-                job_id,
-                status="failed",
-                stage="failed",
-                error_message=f"Unexpected error: {exc}",
-            )
+            _update_job(job_id, status="failed", stage="failed", error_message=f"Unexpected error: {exc}")
         )
         raise

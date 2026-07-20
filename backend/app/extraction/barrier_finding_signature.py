@@ -20,6 +20,7 @@ class FindBarrierCondition(dspy.Signature):
     3. If the near-miss and fatal groups' contributing factors don't show a clear, consistent difference -- e.g. both groups mention similar factors, or the fatal group is too small/thin to support a real pattern -- say so plainly in the finding rather than forcing a distinction that isn't actually supported by the evidence.
     4. The recommended action must be a direct, specific command aimed at whoever is about to do this operation next ("Test the atmosphere at the bottom of the hold immediately before entry, not just at the top"), never a passive or generic recommendation ("Improve atmosphere testing procedures"). At most two sentences.
     5. If there are zero fatal cases to compare against, state in the finding that no fatal cases exist for this operation/vessel combination in the record, and base the recommended action on whatever near-miss/serious patterns are available instead.
+    6. Your output MUST always include both a barrier_finding AND a recommended_action -- this applies even in the "no clear pattern" and "zero fatal cases" cases from rules 3 and 5: those change what the finding and action *say*, not whether they are present. An output missing either section is invalid and will be rejected, so never omit one because you're uncertain -- give your best-supported answer instead.
     """
 
     described_event: str = dspy.InputField(
@@ -35,5 +36,7 @@ class FindBarrierCondition(dspy.Signature):
     serious_count: int = dspy.InputField(desc="Total number of matching serious (nonfatal injury) reports.")
     fatal_count: int = dspy.InputField(desc="Total number of matching fatal reports.")
     findings: EventAnalysisFindings = dspy.OutputField(
-        desc="The barrier finding and the one recommended action, each with citations."
+        desc="The barrier finding and the one recommended action, each with citations. "
+        "Both sections are always required -- never omit recommended_action even when "
+        "the finding is 'no clear pattern' or 'no fatal cases to compare'."
     )

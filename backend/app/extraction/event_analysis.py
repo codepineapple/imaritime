@@ -103,7 +103,14 @@ class RecommendedAction(BaseModel):
 
 
 class EventAnalysisFindings(BaseModel):
-    """Combined Steps D+E output: the barrier condition and the one action."""
+    """Combined Steps D+E output: the barrier condition and the one action.
+
+    Both `barrier_finding` and `recommended_action` are always required
+    in the output, even when the finding is "no clear pattern" or "no
+    fatal cases to compare" -- in that case, `recommended_action` should
+    still contain the best available action given whatever near-miss/
+    serious data exists, not be omitted.
+    """
 
     barrier_finding: BarrierFinding
     recommended_action: RecommendedAction

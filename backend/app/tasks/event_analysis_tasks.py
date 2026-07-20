@@ -165,9 +165,26 @@ def analyze_event(self: Task, job_id: int) -> dict:
         raise
     except TransientEventAnalysisError as exc:
         attempt = self.request.retries + 1
-        run_async(
-            _update_job(job_id, error_message=f"Attempt {attempt}/{self.max_retries + 1} failed: {exc}")
-        )
+        is_final_attempt = self.request.retries >= self.max_retries
+        if is_final_attempt:
+            # autoretry_for wraps this whole function -- once retries are
+            # exhausted, re-raising here just becomes an unhandled Celery
+            # task failure with no code path left to run afterward. Mark
+            # it failed now, on this last attempt, rather than leaving the
+            # job stuck showing its last in-progress stage until the
+            # (much slower) stale-job sweep eventually catches it.
+            run_async(
+                _update_job(
+                    job_id,
+                    status="failed",
+                    stage="failed",
+                    error_message=f"Failed after {attempt} attempt(s): {exc}",
+                )
+            )
+        else:
+            run_async(
+                _update_job(job_id, error_message=f"Attempt {attempt}/{self.max_retries + 1} failed: {exc}")
+            )
         raise
     except Exception as exc:  # noqa: BLE001 - last-resort safeguard
         run_async(
